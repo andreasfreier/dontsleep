@@ -8,7 +8,18 @@ require "dontsleep/version"
 # anywhere; on other platforms `Dontsleep.start` (and the executable) refuse
 # with a clear message before the mouse is ever needed.
 begin
-  require "rumouse"
+  if RbConfig::CONFIG["host_os"] =~ /darwin/
+    require "rumouse"
+  else
+    # Don't even try to load rumouse off-macOS: on Linux it probes X11
+    # libraries and dies with an ugly stack trace. Refuse cleanly instead.
+    module RuMouse
+      def initialize
+        raise Dontsleep::Error,
+              "rumouse could not be loaded — dontsleep needs macOS (and the ffi gem)"
+      end
+    end
+  end
 rescue LoadError
   module RuMouse
     def initialize
