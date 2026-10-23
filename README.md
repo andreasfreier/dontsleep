@@ -1,39 +1,75 @@
-# Dontsleep
+# dontsleep
 
-TODO: Delete this and the text below, and describe your gem
+Keep your Mac awake by moving the mouse a couple of pixels.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/dontsleep`. To experiment with that code, run `bin/console` for an interactive prompt.
+macOS decides you're "idle" when the mouse and keyboard have been still for a
+while — and then it sleeps, killing your SSH sessions, your builds, your
+downloads, and whatever else was patiently running. `dontsleep` prevents that
+by nudging the cursor **2 pixels** now and then: invisible to you, convincing
+to the operating system.
+
+> **macOS only.** The gem depends on `rumouse`, which drives the mouse through
+> macOS' Core Graphics events. On other platforms it installs fine but refuses
+> to run, with a clear message. (Linux/Windows support: open an issue or send
+> a patch — we'd love that.)
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```ruby
+# Gemfile
+gem "dontsleep"
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+or simply:
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```sh
+gem install dontsleep
 ```
+
+Requires macOS and a Ruby ≥ 2.5 with the `ffi` gem (pulled in automatically).
+You will need to grant your terminal **Accessibility** permission under
+*System Settings → Privacy & Security → Accessibility* — that's macOS asking
+nicely that an app may move the mouse. It asks once.
 
 ## Usage
 
-TODO: Write usage instructions here
+The executable does the job:
+
+```sh
+dontsleep                    # 2px nudge every 60s, runs until you press Ctrl-C
+dontsleep --minutes 120      # …and stops itself after 2 hours
+dontsleep --interval 30      # more frequent, smaller heartbeats
+dontsleep --wander           # old-school mode: teleport to a random spot —
+                             # for unattended machines you're not touching
+dontsleep --quiet            # no heartbeat dots
+```
+
+From Ruby:
+
+```ruby
+require "dontsleep"
+Dontsleep.start(minutes: 60)   # e.g. wrapped around a long build
+```
+
+A `.` is printed with each nudge, so you can see it's alive. Ctrl-C always
+stops it cleanly.
+
+## Why a nudge and not a wander?
+
+The original idea — move the mouse to a random position — works, but every
+minute it *yanks your cursor away* from wherever you're actually clicking.
+A 2-pixel ping-pong (right, left, down, up…) resets the idle timer while
+staying out of your way. `--wander` keeps the classic behavior for machines
+you've left alone.
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
-
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/dontsleep.
+```sh
+bundle exec rake        # run tests
+bundle exec rake build  # build the gem
+```
 
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+[MIT](LICENSE.txt) — do whatever you like, no warranty, as with all
+small utilities.

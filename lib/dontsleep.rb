@@ -2,7 +2,21 @@
 
 require "rbconfig"
 require "dontsleep/version"
-require "rumouse"
+
+# rumouse (and its ffi dependency) only exists where it can be built —
+# effectively macOS. Keep the require lenient so the gem *installs and loads*
+# anywhere; on other platforms `Dontsleep.start` (and the executable) refuse
+# with a clear message before the mouse is ever needed.
+begin
+  require "rumouse"
+rescue LoadError
+  module RuMouse
+    def initialize
+      raise Dontsleep::Error,
+            "rumouse could not be loaded — dontsleep needs macOS (and the ffi gem)"
+    end
+  end
+end
 
 # Dontsleep keeps a macOS machine awake by nudging the cursor a couple of
 # pixels now and then, so the system never considers you idle — while your
@@ -17,17 +31,16 @@ module Dontsleep
   def self.start(interval: 60, nudge: 2, minutes: nil, wander: false, quiet: false)
     raise Error, "dontsleep only supports macOS" unless on_mac?
 
-    mouse = RuMouse.new
+    mouse = build_mouse
     deadline = minutes ? Time.now + minutes * 60 : nil
     positive = true
-    axis = 0
 
     until (deadline && Time.now > deadline)
-      sleep interval
-      move_mouse(mouse, nudge: nudge, wander: wander, positive: positive, axis: axis)
-      positive = !positive
-      axis = (axis + 1) % 2
-      print "." unless quiet
+      real_sleep(interval)
+      move_mouse(mouse, nudge: nudge, wander: wander, positive: positive)
+      positive = !positive # +2, −2, +2, −2 … on one fixed axis: pure ping-pong,
+      # zero drift — the cursor jitters in place instead of walking away
+      print(".") { $stdout.flush } unless quiet
     end
     puts
     "stopped (auto-stop)"
@@ -40,15 +53,22 @@ module Dontsleep
     RbConfig::CONFIG["host_os"] =~ /darwin/ ? true : false
   end
 
-  def self.move_mouse(mouse, nudge:, wander:, positive:, axis:)
+  # Indirection points so tests can run the loop on a fake mouse / fake clock.
+  def self.build_mouse
+    RuMouse.new
+  end
+
+  def self.real_sleep(seconds)
+    sleep(seconds)
+  end
+
+  def self.move_mouse(mouse, nudge:, wander:, positive:)
     if wander
       mouse.move(100 + rand(200), 100 + rand(200))
     else
       pos = mouse.position
       delta = positive ? nudge : -nudge
-      new_x = axis.even? ? pos[:x] + delta : pos[:x]
-      new_y = axis.even? ? pos[:y] : pos[:y] + delta
-      mouse.move(new_x, new_y)
+      mouse.move(pos[:x] + delta, pos[:y]) # fixed axis (x): the twitch is invisible
     end
   end
 end
