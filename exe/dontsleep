@@ -1,0 +1,42 @@
+# frozen_string_literal: true
+
+require "dontsleep"
+
+if Dontsleep.on_mac?
+  args = ARGV.dup
+  interval = 60
+  minutes = nil
+  wander = false
+  nudge = 2
+  quiet = false
+
+  while (a = args.shift)
+    case a
+    when "--interval" then interval = args.shift.to_f
+    when "--minutes" then minutes = args.shift.to_i
+    when "--nudge" then nudge = args.shift.to_i
+    when "--wander" then wander = true
+    when "--quiet" then quiet = true
+    when "-h", "--help"
+      puts <<~HELP
+        dontsleep — keep your Mac awake by moving the mouse a little.
+
+        Options:
+          --interval N   seconds between moves (default 60)
+          --minutes N    stop automatically after N minutes (default: run until Ctrl-C)
+          --nudge N      pixels to move (default 2)
+          --wander       teleport to a random spot instead (for unattended machines)
+          --quiet        no heartbeat output
+      HELP
+      exit 0
+    else
+      warn "unknown option: #{a} (see --help)"
+      exit 1
+    end
+  end
+
+  Dontsleep.start(interval: interval, nudge: nudge, minutes: minutes, wander: wander, quiet: quiet)
+else
+  warn "dontsleep only works on macOS (this is #{RbConfig::CONFIG["host_os"]})."
+  exit 1
+end
